@@ -1,0 +1,3 @@
+---
+role: servers
+frr_version: frr-7

@@ -1,0 +1,45 @@
+#jinja2:lstrip_blocks: True
+#jinja2:trim_blocks: True
+#frr version 3.1+cl3u3
+frr defaults datacenter
+username cumulus nopassword
+!
+service integrated-vtysh-config
+!
+log syslog informational
+!
+router bgp {{ as }}
+{% for int in interfaces -%}
+  {% if int.peering_link -%}
+  neighbor {{ int.name }} interface remote-as external
+    {% if option is defined and option == "5549" -%}
+  neighbor {{ int.name }} capability extended-nexthop
+    {% endif -%}
+  {% endif -%}
+{% endfor -%}
+{% if inventory_hostname in groups['servers'] -%}
+  {% if option is defined and option == "ipv6" -%}
+ ad ipv6
+   redistribute connected
+  {% else -%}
+ ad ipv4
+   redistribute connected
+  {% endif -%}
+{% endif -%}
+bgp best as-pa mul
+{% if option is defined and option == "ipv6" -%}
+no bgp default ipv4-unicast
+ad ipv6
+maximum 10  
+  {% for int in interfaces -%}
+    {% if int.peering_link -%}
+ neighbor {{ int.name }} activate
+    {% endif -%}
+  {% endfor -%}
+{% else -%}
+ad ipv4
+maximum 10
+{% endif -%}
+!
+line vty
+!
