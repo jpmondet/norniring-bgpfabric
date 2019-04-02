@@ -11,8 +11,6 @@ from nornir import InitNornir
 from fabric import Fabric
 
 
-
-
 def main():
     """ Main func to initialize Nornir and get started """
 
@@ -20,11 +18,15 @@ def main():
         core={"num_workers": 5},
         inventory={
             "plugin": "nornir.plugins.inventory.ansible.AnsibleInventory",
-            "options": {
-                "hostsfile": "hosts"
-            }
-        }
+            "options": {"hostsfile": "hosts"},
+        },
     )
+    for key, host in nr.inventory.hosts.items():
+        if host.hostname is None:
+            host.hostname = key
+            host.port = 22
+            host.platform = 'linux'
+
     print("~~~~~~ Deploying with this inventory ~~~~~~")
     for name, host in nr.inventory.hosts.items():
         vals = host.items()
@@ -34,12 +36,7 @@ def main():
         print(name, nr.inventory.children_of_group(name))
 
     fabric = Fabric(nr)
-    #fabric.linux_local_cmd('ls -alh')
-    #fabric.calling_api("https://api.chucknorris.io/jokes/random", 'get')
-    #fabric.deploy()
-    rendered = fabric.render_template('interfaces.j2')
-    for name, config in rendered.items():
-        fabric.to_file(f'interfaces-{name}.conf', config)
+    fabric.deploy()
 
 if __name__ == "__main__":
     main()
