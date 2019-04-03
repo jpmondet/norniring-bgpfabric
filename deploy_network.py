@@ -15,7 +15,7 @@ def main():
     """ Main func to initialize Nornir and get started """
 
     nr = InitNornir(
-        core={"num_workers": 5},
+        core={"num_workers": 1},
         inventory={
             "plugin": "nornir.plugins.inventory.ansible.AnsibleInventory",
             "options": {"hostsfile": "hosts"},
