@@ -12,9 +12,14 @@ class Fabric:
         self._nornir = nornir
 
     def linux_local_cmd(self, cmd):
-        local = self._nornir.filter(F(platform="linux"))
+        local = self._nornir.filter(F(role="local"))
         cmd_res = local.run(task=commands.command, command=cmd)
         print_result(cmd_res)
+
+    @staticmethod
+    def run_remote_cmd(task, cmd):
+        res = task.run(commands.remote_command, command=cmd)
+        print_result(res)
 
     def to_local_file(self, filename, content, path="./resources/"):
         hosts = self._nornir.filter(F(platform="linux"))
@@ -54,24 +59,48 @@ class Fabric:
         hosts.run(commands.remote_command, command=command)
         # print_result(res)
 
+    @staticmethod
+    def copy_files(task, src_file, dst_file, named=True):
+        if named:
+            task.run(
+                files.sftp,
+                action="put",
+                src=f'{src_file}-{task.host.name}',
+                dst=dst_file,
+            )
+        else:
+            task.run(
+                files.sftp,
+                action="put",
+                src=f'{src_file}',
+                dst=dst_file,
+            )
+
     def send_j2_command(self, filtered_nr, command_j2):
         commands_rendered = filtered_nr.run(
             text.template_string, template=command_j2
         )
         for _, cmds in commands_rendered.items():
-            filtered_nr.run(commands.remote_command, command=cmds.result)
+            filtered_nr.run(self.run_remote_cmd, cmd=cmds.result)
 
     def configuring_interfaces(self):
         rendered = self.render_template("interfaces.j2")
         for name, config in rendered.items():
-            self.to_remote_file(f"interfaces", config, name, "/etc/network/")
+            self.to_local_file(f"interfaces-{name}", config)
+
+        hosts = self._nornir.filter(
+            F(role="servers") | F(role="spine") | F(role="leaf")
+        )
+        res = hosts.run(task=self.copy_files, src_file='./resources/interfaces', dst_file='/tmp/interfaces')
+        print_result(res)
+        hosts.run(task=self.run_remote_cmd, cmd='sudo cp /tmp/interfaces /etc/network/interfaces')
 
     def flushing_interfaces(self):
         # hosts = self._nornir.filter(~F(platform="linux"))
         hosts = self._nornir.filter(
             F(role="servers") | F(role="spine") | F(role="leaf")
         )
-        command_j2 = "sudo su ; {% for intf in host.interfaces -%} ip addr flush dev {{ intf.name }} && ifup {{ intf.name }} --force ; {% endfor -%}"
+        command_j2 = "{% for intf in host.interfaces -%} sudo ip addr flush dev {{ intf.name }} && sudo ifup {{ intf.name }} --force ; {% endfor -%}"
         self.send_j2_command(hosts, command_j2)
 
     def net_restart(self):
@@ -80,30 +109,40 @@ class Fabric:
             F(role="servers") | F(role="spine") | F(role="leaf")
         )
         command = "sudo systemctl restart networking"
-        hosts.run(commands.remote_command, command=command)
+        hosts.run(self.run_remote_cmd, cmd=command)
+
 
     def install_frr(self):
         srvs = self._nornir.filter(F(role="servers"))
         # Trick to retrieve the frr version from the set of servers
         first_srv = next(iter(srvs.inventory.hosts.keys()))
         frr_ver = self._nornir.inventory.hosts[first_srv]["frr_version"]
-        install_cmds = f"sudo su ; curl -s https://deb.frrouting.org/frr/keys.asc | sudo apt-key add -i ; echo deb https://deb.frrouting.org/frr $(lsb_release -s -c) {frr_ver} | sudo tee -a /etc/apt/sources.list.d/frr.list ; sudo apt update && sudo apt install frr frr-pythontools"
-        srvs.run(commands.remote_command, command=install_cmds)
+        install_cmds = f"curl -s https://deb.frrouting.org/frr/keys.asc | sudo apt-key add -i ; echo deb https://deb.frrouting.org/frr $(lsb_release -s -c) {frr_ver} | sudo tee -a /etc/apt/sources.list.d/frr.list ; sudo apt update && sudo apt install frr frr-pythontools"
+        #install_cmds = "curl -sLO https://github.com/FRRouting/frr/releases/download/frr-6.0.2/frr_6.0.2-0.ubuntu16.04.1_amd64.deb ; sudo apt-get install -y --allow-unauthenticated ./frr_6.0.2-0.ubuntu16.04.1_amd64.deb"
+        res = srvs.run(task=self.run_remote_cmd, cmd=install_cmds)
+        print_result(res)
 
     def configuring_frr(self):
-        rendered_bgp = self.render_template("bgp.j2")
-        for name, config in rendered_bgp.items():
-            self.to_remote_file(name, f"frr.conf", config, "/etc/frr/")
+        rendered = self.render_template("bgp.j2")
+        for name, config in rendered.items():
+            self.to_local_file(f"frrconf-{name}", config)
 
-        with open('./templates/daemons', 'r') as daemons:
-            self.to_remote_file(f"daemons", daemons, "/etc/frr/")
+        hosts = self._nornir.filter(
+            F(role="servers") | F(role="spine") | F(role="leaf")
+        )
+        res = hosts.run(task=self.copy_files, src_file='./resources/frrconf', dst_file='/tmp/frr.conf')
+        print_result(res)
+        res = hosts.run(task=self.copy_files, src_file='./templates/daemons', dst_file='/tmp/daemons')
+        print_result(res)
+        hosts.run(task=self.run_remote_cmd, cmd='sudo cp /tmp/frr.conf /etc/frr/frr.conf')
+        hosts.run(task=self.run_remote_cmd, cmd='sudo cp /tmp/daemons /etc/frr/daemons')
 
     def restart_frr(self):
         hosts = self._nornir.filter(
             F(role="servers") | F(role="spine") | F(role="leaf")
         )
         command = "sudo systemctl restart frr"
-        hosts.run(commands.remote_command, command=command)
+        hosts.run(self.run_remote_cmd, cmd=command)
 
     def deploy(self):
         """ Workflow """
@@ -112,6 +151,9 @@ class Fabric:
         # self.calling_api("https://api.chucknorris.io/jokes/random", 'get')
 
         # Installing FRR on servers
+        print('#'*50)
+        print("Installing FRRouting")
+        print('#'*50)
         self.install_frr()
 
         # Handling interfaces

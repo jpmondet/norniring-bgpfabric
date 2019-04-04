@@ -25,7 +25,7 @@ def main():
         if host.hostname is None:
             host.hostname = key
             host.port = 22
-            host.platform = 'linux'
+            host.platform = "linux"
 
     print("~~~~~~ Deploying with this inventory ~~~~~~")
     for name, host in nr.inventory.hosts.items():
@@ -37,6 +37,7 @@ def main():
 
     fabric = Fabric(nr)
     fabric.deploy()
+
 
 if __name__ == "__main__":
     main()
