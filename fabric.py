@@ -80,8 +80,9 @@ class Fabric:
         commands_rendered = filtered_nr.run(
             text.template_string, template=command_j2
         )
-        for _, cmds in commands_rendered.items():
-            filtered_nr.run(self.run_remote_cmd, cmd=cmds.result)
+        for name, cmds in commands_rendered.items():
+            unique_srv = self._nornir.filter(F(hostname=name))
+            unique_srv.run(self.run_remote_cmd, cmd=cmds.result)
 
     def configuring_interfaces(self):
         rendered = self.render_template("interfaces.j2")
@@ -117,7 +118,7 @@ class Fabric:
         # Trick to retrieve the frr version from the set of servers
         first_srv = next(iter(srvs.inventory.hosts.keys()))
         frr_ver = self._nornir.inventory.hosts[first_srv]["frr_version"]
-        install_cmds = f"curl -s https://deb.frrouting.org/frr/keys.asc | sudo apt-key add -i ; echo deb https://deb.frrouting.org/frr $(lsb_release -s -c) {frr_ver} | sudo tee -a /etc/apt/sources.list.d/frr.list ; sudo apt update && sudo apt install frr frr-pythontools"
+        install_cmds = f"curl -s https://deb.frrouting.org/frr/keys.asc | sudo apt-key add -i ; echo deb https://deb.frrouting.org/frr $(lsb_release -s -c) {frr_ver} | sudo tee -a /etc/apt/sources.list.d/frr.list ; sudo apt install -y --allow-unauthenticated frr frr-pythontools"
         #install_cmds = "curl -sLO https://github.com/FRRouting/frr/releases/download/frr-6.0.2/frr_6.0.2-0.ubuntu16.04.1_amd64.deb ; sudo apt-get install -y --allow-unauthenticated ./frr_6.0.2-0.ubuntu16.04.1_amd64.deb"
         res = srvs.run(task=self.run_remote_cmd, cmd=install_cmds)
         print_result(res)
@@ -144,6 +145,11 @@ class Fabric:
         command = "sudo systemctl restart frr"
         hosts.run(self.run_remote_cmd, cmd=command)
 
+    def delimiter(self, action):
+        print('#'*50)
+        print(action)
+        print('#'*50)
+
     def deploy(self):
         """ Workflow """
 
@@ -151,16 +157,19 @@ class Fabric:
         # self.calling_api("https://api.chucknorris.io/jokes/random", 'get')
 
         # Installing FRR on servers
-        print('#'*50)
-        print("Installing FRRouting")
-        print('#'*50)
+        self.delimiter('Installing FRR')
         self.install_frr()
 
         # Handling interfaces
+        self.delimiter('Prep ifaces config')
         self.configuring_interfaces()
+        self.delimiter('Flushing Ifaces just in case')
         self.flushing_interfaces()
+        self.delimiter('Restarting the network')
         self.net_restart()
 
         # Configuring BGP and restarting FRR on all nodes
+        self.delimiter('Prep bgp config')
         self.configuring_frr()
+        self.delimiter('Restart frr')
         self.restart_frr()

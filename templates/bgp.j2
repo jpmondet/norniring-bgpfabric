@@ -8,17 +8,17 @@ service integrated-vtysh-config
 !
 log syslog informational
 !
-router bgp {{ as }}
-{% for int in interfaces -%}
+router bgp {{ host.as }}
+{% for int in host.interfaces -%}
   {% if int.peering_link -%}
   neighbor {{ int.name }} interface remote-as external
-    {% if option is defined and option == "5549" -%}
+    {% if host.option is defined and host.option == "5549" -%}
   neighbor {{ int.name }} capability extended-nexthop
     {% endif -%}
   {% endif -%}
 {% endfor -%}
-{% if inventory_hostname in groups['servers'] -%}
-  {% if option is defined and option == "ipv6" -%}
+{% if host.role == 'servers' -%}
+  {% if host.option is defined and host.option == "ipv6" -%}
  ad ipv6
    redistribute connected
   {% else -%}
@@ -27,11 +27,11 @@ router bgp {{ as }}
   {% endif -%}
 {% endif -%}
 bgp best as-pa mul
-{% if option is defined and option == "ipv6" -%}
+{% if host.option is defined and host.option == "ipv6" -%}
 no bgp default ipv4-unicast
 ad ipv6
 maximum 10  
-  {% for int in interfaces -%}
+  {% for int in host.interfaces -%}
     {% if int.peering_link -%}
  neighbor {{ int.name }} activate
     {% endif -%}
