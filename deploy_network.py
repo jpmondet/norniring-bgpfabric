@@ -2,10 +2,20 @@
 """
     Deploy all the BGP fabric (Cumulus switches + servers)
 """
+from __future__ import (
+    absolute_import,
+    division,
+    generators,
+    generator_stop,
+    unicode_literals,
+    print_function,
+    nested_scopes,
+    with_statement,
+)
 
-import ipdb
-from pprint import pprint
-import json
+#    annotations,
+
+from argparse import ArgumentParser
 
 from nornir import InitNornir
 from fabric import Fabric
@@ -13,6 +23,19 @@ from fabric import Fabric
 
 def main():
     """ Main func to initialize Nornir and get started """
+
+    parser = ArgumentParser(
+        description="Script to deploy a working RFC5549 BGP Fabric (and to undeploy it as well)"
+    )
+    parser.add_argument(
+        "-u",
+        "--undeploy",
+        default=False,
+        type=bool,
+        help="If True, try to unconfigure the deployed Fabric (default: False)",
+    )
+
+    args = parser.parse_args()
 
     nr = InitNornir(
         core={"num_workers": 1},
@@ -36,7 +59,11 @@ def main():
         print(name, nr.inventory.children_of_group(name))
 
     fabric = Fabric(nr)
-    fabric.deploy()
+
+    if args.undeploy:
+        fabric.undeploy()
+    else:
+        fabric.deploy()
 
 
 if __name__ == "__main__":
