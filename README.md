@@ -11,13 +11,15 @@ On a recent system, you should be good to go simply with ``pip install -r requir
 
 However, Nornir needs at least python 3.6 and there are still a whole lot of devices using older versions.
 
-If you have an older python version (**or if you are using CITC**), you should use this to install python 3.7.3 and all the dependencies to use Nornir : 
+If you have an older python version (**or if you are using CITC**), you should use this to install python 3.6.3 and all the dependencies to use Nornir : 
 
 ```bash
-curl https://raw.githubusercontent.com/jpmondet/norniring-bgpfabric/master/resources/add-compatible-python.sh ; chmod u+x add-compatible-python.sh ; source add-compatible-python.sh
+curl -LO https://raw.githubusercontent.com/jpmondet/norniring-bgpfabric/master/resources/add-compatible-python.sh ; chmod u+x add-compatible-python.sh ; source add-compatible-python.sh
 ```
 
 This use ``pyenv`` on one specific directory and a ``virtualenv`` so it should not mess up with the rest of your system.
+
+**NOTE**: The ssh keys are already distributed on CITC so this is not handled by the script.
 
 ## Deploying the Fabric
 

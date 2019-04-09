@@ -47,8 +47,6 @@ def main():
     for key, host in nr.inventory.hosts.items():
         if host.hostname is None:
             host.hostname = key
-            host.port = 22
-            host.platform = "linux"
 
     print("~~~~~~ Deploying with this inventory ~~~~~~")
     for name, host in nr.inventory.hosts.items():

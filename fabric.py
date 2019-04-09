@@ -124,17 +124,34 @@ class Fabric:
         command = "sudo systemctl restart networking"
         hosts.run(self.run_remote_cmd, cmd=command)
 
-    def install_frr(self):
-        hosts = self._nornir.filter(
-            F(role="servers") | F(role="spine") | F(role="leaf")
-        )
+    def _install_frr_cumulus(self, task):
+        install_cmds = "sudo apt install -y frr"
+        res = task.run(task=self.run_remote_cmd, cmd=install_cmds)
+        print_result(res)
+
+    def _install_frr_debian(self, task):
         # Trick to retrieve the frr version from the set of servers
         # first_srv = next(iter(srvs.inventory.hosts.keys()))
         # frr_ver = self._nornir.inventory.hosts[first_srv]["frr_version"]
-        # install_cmds = f"curl -s https://deb.frrouting.org/frr/keys.asc | sudo apt-key add -i ; echo deb https://deb.frrouting.org/frr $(lsb_release -s -c) {frr_ver} | sudo tee /etc/apt/sources.list.d/frr.list ; sudo apt install -y --allow-unauthenticated frr frr-pythontools"
+        install_cmds = [
+            "curl -s https://deb.frrouting.org/frr/keys.asc | sudo apt-key add",
+            "echo deb https://deb.frrouting.org/frr $(lsb_release -s -c) frr-stable | sudo tee /etc/apt/sources.list.d/frr.list",
+            "sudo apt-get update -y",
+            "sudo apt-get install -y frr frr-pythontools",
+        ]
+        # install_cmds = f"curl -s https://deb.frrouting.org/frr/keys.asc | sudo apt-key add -i ; echo deb https://deb.frrouting.org/frr $(lsb_release -s -c) frr-stable | sudo tee /etc/apt/sources.list.d/frr.list ; sudo apt install -y --allow-unauthenticated frr frr-pythontools"
         # install_cmds = "curl -sLO https://github.com/FRRouting/frr/releases/download/frr-6.0.2/frr_6.0.2-0.ubuntu16.04.1_amd64.deb ; sudo apt-get install -y --allow-unauthenticated ./frr_6.0.2-0.ubuntu16.04.1_amd64.deb"
-        install_cmds = "sudo apt install -y frr"
-        res = hosts.run(task=self.run_remote_cmd, cmd=install_cmds)
+        # install_cmds = "sudo apt install -y frr"
+        for cmd in install_cmds:
+            res = task.run(task=self.run_remote_cmd, cmd=cmd)
+            print_result(res)
+
+    def install_frr(self):
+        hosts = self._nornir.filter(F(role="spine") | F(role="leaf"))
+        res = hosts.run(task=self._install_frr_cumulus)
+        print_result(res)
+        hosts = self._nornir.filter(F(role="servers"))
+        res = hosts.run(task=self._install_frr_debian)
         print_result(res)
 
     def configuring_frr(self):
@@ -219,9 +236,8 @@ class Fabric:
         )
         res = hosts.run(
             task=self.run_remote_cmd,
-            cmd='echo -e "auto lo\niface lo inet loopback\nauto eth0\niface eth0 inet dhcp" > /etc/network/interfaces',
+            cmd='echo -e "auto lo\niface lo inet loopback\nauto eth0\niface eth0 inet dhcp" | sudo tee /etc/network/interfaces',
         )
-        print_result(res)
 
     def undeploy(self):
         """ Unconfigure all the fabric """

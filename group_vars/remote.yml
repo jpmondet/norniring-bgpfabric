@@ -1,2 +1,4 @@
 ---
 option: 5549
+port: 22
+platform: linux
