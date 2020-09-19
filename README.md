@@ -1,3 +1,5 @@
+# /!\ Nornir changed a lot since the 3.0 version that released recently (09/2020) and this repo is not yet reflecting those changes.
+
 # norniring-bgpfabric
 Automating the deployment of a BGP fabric with Nornir
 
