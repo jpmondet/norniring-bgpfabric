@@ -18,6 +18,7 @@ from __future__ import (
 from argparse import ArgumentParser
 
 from nornir import InitNornir
+from nornir_ansible.plugins.inventory.ansible import AnsibleInventory
 from fabric import Fabric
 
 
@@ -38,9 +39,14 @@ def main():
     args = parser.parse_args()
 
     nr = InitNornir(
-        core={"num_workers": 1},
+        runner={
+            "plugin": "serial",
+            #"options": {
+            #"num_workers": 1,
+            #},
+        },
         inventory={
-            "plugin": "nornir.plugins.inventory.ansible.AnsibleInventory",
+            "plugin": "AnsibleInventory",
             "options": {"hostsfile": "hosts"},
         },
     )
