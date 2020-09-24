@@ -12,8 +12,11 @@ from __future__ import (
     with_statement,
 )  # , annotations
 
-from nornir.plugins.tasks import commands, apis, text, files
-from nornir.plugins.functions.text import print_result
+#from nornir.plugins.tasks import commands, apis, text, files
+from nornir_netmiko import netmiko_send_command as commands #commands plugin still doesn't exist on 3.0. We use netmiko instead.
+from nornir_utils.plugins.functions import print_result
+from nornir_utils.plugins.tasks.files import write_file as files
+from nornir_jinja2.plugins.tasks import template_file, template_string
 from nornir.core.filter import F
 
 
@@ -35,10 +38,11 @@ class Fabric:
         hosts = self._nornir.filter(F(platform="linux"))
         hosts.run(files.write_file, filename=path + filename, content=content)
 
-    def calling_api(self, url, method):
-        local = self._nornir.filter(F(platform="linux"))
-        api_res = local.run(task=apis.http_method, method=method, url=url)
-        print_result(api_res)
+    # Api (http_method) is still not implemented on nornir3
+    #def calling_api(self, url, method):
+    #    local = self._nornir.filter(F(platform="linux"))
+    #    api_res = local.run(task=apis.http_method, method=method, url=url)
+    #    print_result(api_res)
 
     def render_template(self, tplate, path="./templates"):
         # hosts = self._nornir.filter(~F(platform="linux"))
@@ -46,7 +50,7 @@ class Fabric:
             F(role="servers") | F(role="spine") | F(role="leaf")
         )
         rendered_cfg = hosts.run(
-            text.template_file, template=tplate, path=path
+            template_file, template=tplate, path=path
         )
         # print_result(rendered_cfg)
         rendered_cfg_dict = dict()
@@ -83,7 +87,7 @@ class Fabric:
 
     def send_j2_command(self, filtered_nr, command_j2):
         commands_rendered = filtered_nr.run(
-            text.template_string, template=command_j2
+            template_string, template=command_j2
         )
         for name, cmds in commands_rendered.items():
             unique_srv = self._nornir.filter(F(hostname=name))
