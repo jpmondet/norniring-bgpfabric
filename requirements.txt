@@ -1,3 +1,5 @@
 nornir>=3.0.0
 nornir-utils
 nornir-ansible
+nornir-netmiko
+nornir-jinja2
