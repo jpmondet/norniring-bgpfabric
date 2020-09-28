@@ -14,8 +14,9 @@ from __future__ import (
 
 #from nornir.plugins.tasks import commands, apis, text, files
 from nornir_netmiko import netmiko_send_command as commands #commands plugin still doesn't exist on 3.0. We use netmiko instead.
+from nornir_netmiko import netmiko_file_transfer
 from nornir_utils.plugins.functions import print_result
-from nornir_utils.plugins.tasks.files import write_file as files
+from nornir_utils.plugins.tasks.files import write_file
 from nornir_jinja2.plugins.tasks import template_file, template_string
 from nornir.core.filter import F
 
@@ -26,17 +27,17 @@ class Fabric:
 
     def linux_local_cmd(self, cmd):
         local = self._nornir.filter(F(role="local"))
-        cmd_res = local.run(task=commands.command, command=cmd)
+        cmd_res = local.run(task=commands, command_string=cmd)
         print_result(cmd_res)
 
     @staticmethod
     def run_remote_cmd(task, cmd):
-        res = task.run(commands.remote_command, command=cmd)
+        res = task.run(commands, command_string=cmd)
         print_result(res)
 
     def to_local_file(self, filename, content, path="./resources/"):
         hosts = self._nornir.filter(F(platform="linux"))
-        hosts.run(files.write_file, filename=path + filename, content=content)
+        hosts.run(write_file, filename=path + filename, content=content)
 
     # Api (http_method) is still not implemented on nornir3
     #def calling_api(self, url, method):
@@ -70,20 +71,21 @@ class Fabric:
         else:
             hosts = self._nornir.filter(F(hostname=name))
         command = f'sudo su ; echo "{content}" > {path}{filename}'
-        hosts.run(commands.remote_command, command=command)
+        hosts.run(commands, command_string=command)
         # print_result(res)
 
     @staticmethod
     def copy_files(task, src_file, dst_file, named=True):
         if named:
             task.run(
-                files.sftp,
-                action="put",
-                src=f"{src_file}-{task.host.name}",
-                dst=dst_file,
+                netmiko_file_transfer,
+                source_file=f"{src_file}-{task.host.name}",
+                dest_file=dst_file,
+                file_system="/",
             )
         else:
-            task.run(files.sftp, action="put", src=f"{src_file}", dst=dst_file)
+            task.run(netmiko_file_transfer, source_file=f"{src_file}", dest_file=dst_file, file_system="/")
+
 
     def send_j2_command(self, filtered_nr, command_j2):
         commands_rendered = filtered_nr.run(
