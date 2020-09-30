@@ -17,16 +17,18 @@ fi
 wait
 sudo apt-get update; sudo apt-get install -y make build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev python-openssl python3-openssl
 wait
-pyenv install 3.6.3
+pyenv install 3.7.3
 wait
 git clone https://github.com/jpmondet/norniring-bgpfabric
 wait
 cd norniring-bgpfabric
 wait
-pyenv local 3.6.3
+pyenv local 3.7.3
 wait
 python -m venv venv
 wait
 . venv/bin/activate
+wait
+git checkout upgrade_to_nornir3
 wait
 pip install -r requirements.txt
