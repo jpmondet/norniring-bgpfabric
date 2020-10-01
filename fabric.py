@@ -129,7 +129,7 @@ class Fabric:
         )
         #command = "sudo systemctl restart networking"  # Disrupt admin connection..
         #hosts.run(self.run_remote_cmd, cmd=command)
-        command_j2 = "{% for intf in host.interfaces -%} sudo ifdown {{ intf.name }} && sudo ifup {{ intf.name }} ; {% endfor -%}"
+        command_j2 = "{% for intf in host.interfaces -%} sudo ifdown {{ intf.name }} && sudo ifup {{ intf.name }} ; {% endfor -%} sudo ifup lo ; "
         self.send_j2_command(hosts, command_j2)
 
     def _install_frr_cumulus(self, task):
