@@ -35,15 +35,17 @@ def main():
         type=bool,
         help="If True, try to unconfigure the deployed Fabric (default: False)",
     )
+    #TODO: Add an option to do some connectivity tests
 
     args = parser.parse_args()
 
     nr = InitNornir(
         runner={
-            "plugin": "serial",
-            #"options": {
-            #"num_workers": 1,
-            #},
+            #"plugin": "serial",
+            "plugin": "threaded",
+            "options": {
+                "num_workers": 10,
+            },
         },
         inventory={
             "plugin": "AnsibleInventory",
