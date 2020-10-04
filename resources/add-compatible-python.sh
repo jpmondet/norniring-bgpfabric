@@ -29,6 +29,6 @@ python -m venv venv
 wait
 . venv/bin/activate
 wait
-git checkout upgrade_to_nornir3
-wait
+#git checkout upgrade_to_nornir3
+#wait
 pip install -r requirements.txt
