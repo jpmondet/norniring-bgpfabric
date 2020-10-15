@@ -1,6 +1,6 @@
 # Norniring the BGP Fabric
 
-Automating the deployment of a BGP fabric with Nornir
+Automating the deployment of a BGP fabric with Nornir **version 3**
 
 This basically reproduce exactly the fabric done here but using Nornir: [FullyAutomatedBGPfabric](https://github.com/jpmondet/FullyAutomatedBGPfabric)
 
